@@ -49,10 +49,72 @@ module.exports =
 /************************************************************************/
 /******/ ({
 
+/***/ 82:
+/***/ (function(__unusedmodule, exports) {
+
+"use strict";
+
+// We use any as a valid input type
+/* eslint-disable @typescript-eslint/no-explicit-any */
+Object.defineProperty(exports, "__esModule", { value: true });
+/**
+ * Sanitizes an input into a string so it can be passed into issueCommand safely
+ * @param input input to sanitize into a string
+ */
+function toCommandValue(input) {
+    if (input === null || input === undefined) {
+        return '';
+    }
+    else if (typeof input === 'string' || input instanceof String) {
+        return input;
+    }
+    return JSON.stringify(input);
+}
+exports.toCommandValue = toCommandValue;
+//# sourceMappingURL=utils.js.map
+
+/***/ }),
+
 /***/ 87:
 /***/ (function(module) {
 
 module.exports = require("os");
+
+/***/ }),
+
+/***/ 102:
+/***/ (function(__unusedmodule, exports, __webpack_require__) {
+
+"use strict";
+
+// For internal use, subject to change.
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+    result["default"] = mod;
+    return result;
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+// We use any as a valid input type
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const fs = __importStar(__webpack_require__(747));
+const os = __importStar(__webpack_require__(87));
+const utils_1 = __webpack_require__(82);
+function issueCommand(command, message) {
+    const filePath = process.env[`GITHUB_${command}`];
+    if (!filePath) {
+        throw new Error(`Unable to find environment variable for file command ${command}`);
+    }
+    if (!fs.existsSync(filePath)) {
+        throw new Error(`Missing file at path: ${filePath}`);
+    }
+    fs.appendFileSync(filePath, `${utils_1.toCommandValue(message)}${os.EOL}`, {
+        encoding: 'utf8'
+    });
+}
+exports.issueCommand = issueCommand;
+//# sourceMappingURL=file-command.js.map
 
 /***/ }),
 
@@ -64,34 +126,34 @@ const pinataSDK = __webpack_require__(645);
 const fsPath = __webpack_require__(622);
 
 // Getting all inputs
-const path = core.getInput('path');
-const pinName = core.getInput('pin-name');
-const pinataApiKey = core.getInput('pinata-api-key');
-const pinataSecretApiKey = core.getInput('pinata-secret-api-key');
-const verbose = core.getInput('verbose');
-const removeOld = core.getInput('remove-old');
+const path = core.getInput("path");
+const pinName = core.getInput("pin-name");
+const pinataApiKey = core.getInput("pinata-api-key");
+const pinataSecretApiKey = core.getInput("pinata-secret-api-key");
+const verbose = core.getInput("verbose");
+const removeOld = core.getInput("remove-old");
 
 // Getting workspace directory
 const workspace = process.env.GITHUB_WORKSPACE.toString();
 
-if(verbose) {
-    console.log("workspace: " + workspace);
+if (verbose) {
+  console.log("workspace: " + workspace);
 
-    const env = JSON.stringify(process.env);
-    console.log("env: " + env);
+  const env = JSON.stringify(process.env);
+  console.log("env: " + env);
 }
 
 // If path is absolute use it
 let sourcePath = path;
 
 // Otherwise combine it using workspace and provided path
-if(!fsPath.isAbsolute(path)) {
-    sourcePath = fsPath.join(workspace, path);
+if (!fsPath.isAbsolute(path)) {
+  sourcePath = fsPath.join(workspace, path);
 }
 
-if(verbose) {
-    console.log("path: " + path);
-    console.log("sourcePath: " + sourcePath);
+if (verbose) {
+  console.log("path: " + path);
+  console.log("sourcePath: " + sourcePath);
 }
 
 // Connecting to Pinata
@@ -99,67 +161,88 @@ const pinata = pinataSDK(pinataApiKey, pinataSecretApiKey);
 
 // Constructing Pinata options
 const options = {
-    pinataMetadata: {
-        name: pinName,
+  pinataMetadata: {
+    name: pinName,
+  },
+  pinataOptions: {
+    cidVersion: 0,
+    wrapWithDirectory: false,
+    customPinPolicy: {
+      regions: [
+        {
+          id: "FRA1",
+          desiredReplicationCount: 2,
+        },
+        {
+          id: "NYC1",
+          desiredReplicationCount: 2,
+        },
+      ],
     },
-    pinataOptions: {
-        cidVersion: 0,
-        wrapWithDirectory: false
-    }
+  },
 };
 
 // Function to unpin old hashes
 function unpinHash(hashToUnpin) {
-	pinata.unpin(hashToUnpin).then((result) => {
-        if(verbose) {
-            console.log(result);
-        }
-    }).catch((err) => {
-        console.log(err);
+  pinata
+    .unpin(hashToUnpin)
+    .then((result) => {
+      if (verbose) {
+        console.log(result);
+      }
+    })
+    .catch((err) => {
+      console.log(err);
     });
 }
 
 // Function to search for all old pins with the same name and unpin them if they are not the latest one
 function removeOldPinsSaving(hash) {
-	const metadataFilter = {
-		name: pinName,
-	};
-	const filters = {
-		status: "pinned",
-		pageLimit: 1000,
-		pageOffset: 0,
-		metadata: metadataFilter,
-	};
-	pinata.pinList(filters).then((result) => {
-            if(verbose) {
-                console.log(result);
-            }
-			result.rows.forEach((element) => {
-				if (element.ipfs_pin_hash != hash) {
-					unpinHash(element.ipfs_pin_hash);
-				}
-			});
-		}).catch((err) => {
-            console.log(err);
-        });
+  const metadataFilter = {
+    name: pinName,
+  };
+  const filters = {
+    status: "pinned",
+    pageLimit: 1000,
+    pageOffset: 0,
+    metadata: metadataFilter,
+  };
+  pinata
+    .pinList(filters)
+    .then((result) => {
+      if (verbose) {
+        console.log(result);
+      }
+      result.rows.forEach((element) => {
+        if (element.ipfs_pin_hash != hash) {
+          unpinHash(element.ipfs_pin_hash);
+        }
+      });
+    })
+    .catch((err) => {
+      console.log(err);
+    });
 }
 
 // Deploying (pining) to IPFS using Pinata from file system
-pinata.pinFromFS(sourcePath, options).then((result) => {
-    if(verbose) {
-        console.log(result);
-        console.log("HASH: " + result.IpfsHash);
+pinata
+  .pinFromFS(sourcePath, options)
+  .then((result) => {
+    if (verbose) {
+      console.log(result);
+      console.log("HASH: " + result.IpfsHash);
     }
 
-    if(removeOld) {
-        removeOldPinsSaving(result.IpfsHash);
+    if (removeOld) {
+      removeOldPinsSaving(result.IpfsHash);
     }
 
     // Providing hash as output parameter of execution
     core.setOutput("hash", result.IpfsHash);
-}).catch((err) => {
+  })
+  .catch((err) => {
     console.log(err);
-});
+  });
 
 
 /***/ }),
@@ -206,6 +289,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const os = __importStar(__webpack_require__(87));
+const utils_1 = __webpack_require__(82);
 /**
  * Commands
  *
@@ -259,28 +343,14 @@ class Command {
         return cmdStr;
     }
 }
-/**
- * Sanitizes an input into a string so it can be passed into issueCommand safely
- * @param input input to sanitize into a string
- */
-function toCommandValue(input) {
-    if (input === null || input === undefined) {
-        return '';
-    }
-    else if (typeof input === 'string' || input instanceof String) {
-        return input;
-    }
-    return JSON.stringify(input);
-}
-exports.toCommandValue = toCommandValue;
 function escapeData(s) {
-    return toCommandValue(s)
+    return utils_1.toCommandValue(s)
         .replace(/%/g, '%25')
         .replace(/\r/g, '%0D')
         .replace(/\n/g, '%0A');
 }
 function escapeProperty(s) {
-    return toCommandValue(s)
+    return utils_1.toCommandValue(s)
         .replace(/%/g, '%25')
         .replace(/\r/g, '%0D')
         .replace(/\n/g, '%0A')
@@ -314,6 +384,8 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const command_1 = __webpack_require__(431);
+const file_command_1 = __webpack_require__(102);
+const utils_1 = __webpack_require__(82);
 const os = __importStar(__webpack_require__(87));
 const path = __importStar(__webpack_require__(622));
 /**
@@ -340,9 +412,17 @@ var ExitCode;
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function exportVariable(name, val) {
-    const convertedVal = command_1.toCommandValue(val);
+    const convertedVal = utils_1.toCommandValue(val);
     process.env[name] = convertedVal;
-    command_1.issueCommand('set-env', { name }, convertedVal);
+    const filePath = process.env['GITHUB_ENV'] || '';
+    if (filePath) {
+        const delimiter = '_GitHubActionsFileCommandDelimeter_';
+        const commandValue = `${name}<<${delimiter}${os.EOL}${convertedVal}${os.EOL}${delimiter}`;
+        file_command_1.issueCommand('ENV', commandValue);
+    }
+    else {
+        command_1.issueCommand('set-env', { name }, convertedVal);
+    }
 }
 exports.exportVariable = exportVariable;
 /**
@@ -358,7 +438,13 @@ exports.setSecret = setSecret;
  * @param inputPath
  */
 function addPath(inputPath) {
-    command_1.issueCommand('add-path', {}, inputPath);
+    const filePath = process.env['GITHUB_PATH'] || '';
+    if (filePath) {
+        file_command_1.issueCommand('PATH', inputPath);
+    }
+    else {
+        command_1.issueCommand('add-path', {}, inputPath);
+    }
     process.env['PATH'] = `${inputPath}${path.delimiter}${process.env['PATH']}`;
 }
 exports.addPath = addPath;
