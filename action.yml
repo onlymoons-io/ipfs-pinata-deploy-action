@@ -25,6 +25,9 @@ inputs:
     description: 'Verbose mode'
     required: true
     default: 'false'
+  regions:
+    description: 'Region and replication config'
+    required: false
 outputs:
   hash:
     description: 'IPFS hash of the uploaded file or directory'
