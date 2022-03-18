@@ -9,6 +9,9 @@ const pinataApiKey = core.getInput("pinata-api-key");
 const pinataSecretApiKey = core.getInput("pinata-secret-api-key");
 const verbose = core.getInput("verbose");
 const removeOld = core.getInput("remove-old");
+const regions = core.getInput("regions")
+  ? JSON.parse(core.getInput("regions"))
+  : undefined;
 
 // Getting workspace directory
 const workspace = process.env.GITHUB_WORKSPACE.toString();
@@ -31,6 +34,7 @@ if (!fsPath.isAbsolute(path)) {
 if (verbose) {
   console.log("path: " + path);
   console.log("sourcePath: " + sourcePath);
+  console.log("regions " + JSON.stringify(regions));
 }
 
 // Connecting to Pinata
@@ -44,18 +48,11 @@ const options = {
   pinataOptions: {
     cidVersion: 0,
     wrapWithDirectory: false,
-    customPinPolicy: {
-      regions: [
-        {
-          id: "FRA1",
-          desiredReplicationCount: 2,
-        },
-        {
-          id: "NYC1",
-          desiredReplicationCount: 2,
-        },
-      ],
-    },
+    ...(regions
+      ? {
+          customPinPolicy: { regions },
+        }
+      : {}),
   },
 };
 
